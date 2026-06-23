@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Josh & Cait's Hucks Crawl</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--amber:#C8873A;--amber-lt:#F0B96A;--ink:#1A1208;--parchment:#F7F2E8;--rule:#D6C9A8;--pub-bg:#FFFDF7}
+body{background:var(--parchment);color:var(--ink);font-family:Georgia,serif}
+header{background:var(--ink);padding:2.4rem 1.5rem 2rem;text-align:center}
+h1{font-size:clamp(1.9rem,5.5vw,3.5rem);line-height:1.1;color:#fff}
+h1 span{color:var(--amber-lt)}
+.datebadge{display:inline-block;margin-top:1rem;background:var(--amber);color:#fff;font-size:.74rem;font-weight:bold;padding:.4rem 1.2rem}
+.timebadge{display:block;margin-top:.5rem;color:var(--amber-lt);font-size:.82rem;font-weight:bold}
+.rule{width:48px;height:2px;background:var(--amber);margin:1rem auto 0}
+#map{width:100%;height:450px;border-bottom:2px solid var(--rule)}
+.stats{display:flex;justify-content:center;background:var(--ink)}
+.stat{flex:1;text-align:center;padding:1rem .5rem}
+.stat-num{font-size:1.5rem;font-weight:bold;color:var(--amber-lt)}
+.stat-lbl{font-size:.62rem;color:rgba(255,255,255,.45);text-transform:uppercase}
+.sec{font-size:.65rem;font-weight:bold;color:var(--amber);padding:2rem 1.5rem .9rem;border-top:1px solid var(--rule);text-transform:uppercase}
+.stops{padding:0 1rem 1.5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.75rem}
+.stop{background:var(--pub-bg);border:1px solid var(--rule);display:flex}
+.num{min-width:44px;background:var(--ink);display:flex;align-items:center;justify-content:center;color:var(--amber-lt);font-weight:bold}
+.body{padding:.75rem .9rem}
+.name{font-weight:bold}
+.addr,.note{font-size:.75rem;margin-top:.3rem;color:#666}
+footer{text-align:center;padding:2rem 1rem;font-size:.75rem;color:#aaa;border-top:1px solid var(--rule);margin-top:0.5rem} footer strong{color:var(--amber);font-weight:bold}
+.leaflet-routing-container{display:none}
+</style>
+</head>
+<body>
+
+<header>
+<h1>Josh &amp; Cait's<br><span>Hucks Crawl</span></h1>
+<div style="margin-top:0.7rem;font-size:0.88rem;color:rgba(255,255,255,0.5);letter-spacing:0.04em">10 pubs &middot; Walking route &middot; ~4&ndash;5 km</div>
+<div class="datebadge">Saturday 4 July 2026</div>
+<div class="timebadge">2:00 PM – 9:00 PM</div>
+<div class="rule"></div>
+</header>
+
+<div id="map"></div>
+
+<div class="stats">
+<div class="stat"><div class="stat-num">10</div><div class="stat-lbl">Pubs</div></div>
+<div class="stat"><div id="distance" class="stat-num">...</div><div class="stat-lbl">Walking</div></div>
+<div class="stat"><div class="stat-num">2 PM</div><div class="stat-lbl">Start</div></div>
+<div class="stat"><div class="stat-num">9 PM</div><div class="stat-lbl">Finish</div></div>
+</div>
+
+<p class="sec">The Route</p>
+<div class="stops" id="stops"></div>
+
+<footer>
+<strong>2:00 PM &ndash; 9:00 PM &middot; Saturday 4 July 2026</strong><br><br>Drink Irresponsibly
+</footer>
+
+<script>
+const pubs=[
+{n:1,name:"The Welcome Hotel",addr:"91 Evans St, Rozelle",note:"Meet here at 2:00PM, last person to arrive skulls their drink.",lat:-33.8626779,lng:151.1734117},
+{n:2,name:"Sackville Hotel",addr:"599 Darling St, Rozelle",note:"Order a cocktail, set a rule.",lat:-33.8607914,lng:151.1716808},
+{n:3,name:"Cat & Fiddle Hotel",addr:"456 Darling St, Balmain",note:"Pick another person's drink.",lat:-33.8568279,lng:151.1727431},
+{n:4,name:"DiCK's Hotel",addr:"89 Beattie St, Balmain",note:"Rules reset.",lat:-33.8586854,lng:151.1773404},
+{n:5,name:"The Riverview Hotel",addr:"29 Birchgrove Rd, Balmain",note:"Two truths and a lie &mdash; lose = finish your drink.",lat:-33.8549294,lng:151.1753018},
+{n:6,name:"Royal Oak Hotel",addr:"36 College St, Balmain",note:"Do a shot, set a rule.",lat:-33.8554821,lng:151.1808486},
+{n:7,name:"The Dry Dock",addr:"22 Cameron St, Balmain",note:"Heads or tails &mdash; win = drink.",lat:-33.8547897,lng:151.1827121},
+{n:8,name:"The Cricketers",addr:"255 Darling St, Balmain",note:"Minesweeper.",lat:-33.8576219,lng:151.1820975},
+{n:9,name:"The London Hotel",addr:"234 Darling St, Balmain",note:"Rules reset.",lat:-33.8584070,lng:151.1844510},
+{n:10,name:"East Village Hotel",addr:"82 Darling St, Balmain East",note:"Laugh = drink.",lat:-33.8576348,lng:151.1924917}
+];
+
+const stops=document.getElementById('stops');
+pubs.forEach(p=>{
+stops.insertAdjacentHTML('beforeend',`<div class="stop"><div class="num">${p.n}</div><div class="body"><div class="name">${p.name}</div><div class="addr">${p.addr}</div><div class="note">${p.note}</div></div></div>`);
+});
+
+const map=L.map('map');
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+
+pubs.forEach(pub=>{
+const color=pub.n===1?'#2E7D32':pub.n===10?'#C62828':'#1E3A5F';
+const icon=L.divIcon({
+html:`<div style="width:32px;height:32px;border-radius:50%;background:${color};border:3px solid #C8873A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold">${pub.n}</div>`,
+className:'',iconSize:[32,32],iconAnchor:[16,16]
+});
+L.marker([pub.lat,pub.lng],{icon}).addTo(map).bindPopup(`<b>${pub.n}. ${pub.name}</b>`);
+});
+
+// Added a shaping waypoint on Darling Street between stops 8 and 9
+// to encourage the routing engine to stay on the main road.
+const waypoints=[
+L.latLng(-33.8626779,151.1734117),
+L.latLng(-33.8607914,151.1716808),
+L.latLng(-33.8568279,151.1727431),
+L.latLng(-33.8586854,151.1773404),
+L.latLng(-33.8549294,151.1753018),
+L.latLng(-33.8554821,151.1808486),
+L.latLng(-33.8547897,151.1827121),
+L.latLng(-33.8576219,151.1820975),
+L.latLng(-33.8580,151.1832), // Darling Street shaping point
+L.latLng(-33.8584070,151.1844510),
+L.latLng(-33.8576348,151.1924917)
+];
+
+L.Routing.control({
+waypoints:waypoints,
+routeWhileDragging:false,
+addWaypoints:false,
+draggableWaypoints:false,
+fitSelectedRoutes:true,
+show:false,
+lineOptions:{styles:[{color:'#C8873A',weight:5,opacity:.9}]},
+createMarker:function(){return null;}
+}).on('routesfound',function(e){
+const km=(e.routes[0].summary.totalDistance/1000).toFixed(1);
+document.getElementById('distance').innerText=km+'km';
+}).addTo(map);
+</script>
+
+</body>
+</html>
